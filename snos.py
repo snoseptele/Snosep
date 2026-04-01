@@ -1,8 +1,9 @@
-#https://t.me/+O1F14zN8HPM0N2Fh
 import random
 import time
 import os
 import hashlib
+import pytz
+from datetime import datetime
 from tls_client import Session
 from colorama import init, Fore, Style
 
@@ -87,47 +88,93 @@ EMAILS = [
 "kudryavtsev241@mail.ru", "baranov242@yandex.ru", "kukushkin243@gmail.com", "chernov244@bk.ru", "shevtsov245@list.ru", "frolov246@inbox.ru", "matveev247@protonmail.com", "ponomarev248@yahoo.com", "ustinov249@outlook.com", "melnikov250@rambler.ru"
 ][:250]
 
+USER_AGENTS = {
+    "chrome_124": {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36", "timezone": "Europe/Moscow", "platform": "Windows"},
+    "chrome_123": {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36", "timezone": "Europe/Moscow", "platform": "Windows"},
+    "chrome_120": {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36", "timezone": "Europe/Moscow", "platform": "Windows"},
+    "firefox_120": {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0", "timezone": "Europe/Moscow", "platform": "Windows"},
+    "firefox_115": {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:115.0) Gecko/20100101 Firefox/115.0", "timezone": "Europe/Moscow", "platform": "Windows"},
+    "edge_122": {"ua": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 Edg/122.0.0.0", "timezone": "Europe/Moscow", "platform": "Windows"},
+    "safari_17_0": {"ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15", "timezone": "Europe/Moscow", "platform": "MacOS"},
+    "ios_17_0": {"ua": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1", "timezone": "Europe/Moscow", "platform": "iOS"}
+}
+
+BROWSERS = list(USER_AGENTS.keys())
+
 def generate_violation_link(username, target_id):
     link_id = ''.join([random.choice('abcdef0123456789') for _ in range(8)])
     return f"t.me/telegram_reports/{link_id}?q={username}_{target_id}"
 
 def get_complaint_text(username, target_id, template_type):
-    if "need_link" in template_type:
-        link = generate_violation_link(username, target_id)
-    else:
-        link = ""
+    link = generate_violation_link(username, target_id)
     
     templates = {
-        "akc_doks": f"User @{username} (ID: {target_id}) is publishing doxing materials.\nHe posted my home address and passport photos.\nViolation link: {generate_violation_link(username, target_id)}\nI ask to ban him immediately for violating privacy laws.",
-        "akc_spam": f"User @{username} (ID: {target_id}) is sending massive spam every day.\nHe flooded my channel with ads and phishing links.\nViolation link: {generate_violation_link(username, target_id)}\nThis is a violation of Telegram rules. Please block him.",
-        "akc_scam": f"Account @{username} (ID: {target_id}) is a scammer.\nHe promised to sell me an iPhone but took my money and disappeared.\nViolation link: {generate_violation_link(username, target_id)}\nI have screenshots. Many people complain about him.",
-        "akc_narko": f"User @{username} (ID: {target_id}) runs a drug shop in Telegram.\nHe sells mephedrone and cocaine via private messages.\nViolation link: {generate_violation_link(username, target_id)}\nHis channel promotes illegal substances. Ban this account.",
-        "akc_prodazha": f"User @{username} (ID: {target_id}) sells stolen Telegram accounts and hacked data.\nHe offers stolen credit cards and PayPal logins.\nViolation link: {generate_violation_link(username, target_id)}\nThis is clearly against Telegram ToS. Please suspend him.",
-        "tgk_doks": f"Channel @{username} (ID: {target_id}) publishes personal data of people.\nThey posted my full name, address and workplace without consent.\nViolation link: {generate_violation_link(username, target_id)}\nThis is doxing and harassment. Close this channel.",
-        "tgk_narko": f"Channel @{username} (ID: {target_id}) is a drug marketplace.\nThey have links to darknet shops and contact for buying narcotics.\nViolation link: {generate_violation_link(username, target_id)}\nViolation of Telegram rules and federal law. Please delete.",
-        "tgk_prodazha": f"Channel @{username} (ID: {target_id}) sells illegal goods.\nThey offer fake passports, driving licenses and university diplomas.\nViolation link: {generate_violation_link(username, target_id)}\nThis is fraud. Ban this channel immediately.",
-        "bot_narko": f"Bot @{username} (ID: {target_id}) sells drugs via auto-reply.\nAnyone can order cocaine, LSD or marijuana through this bot.\nIt is a clear violation. Please block this bot.",
-        "bot_glaz": f"Bot @{username} (ID: {target_id}) is a doxing tool called Eye of God.\nIt leaks personal data: passport, car number, phone, address.\nViolation link: {generate_violation_link(username, target_id)}\nThis bot violates privacy laws. Remove it from Telegram.",
-        "bot_spam": f"Bot @{username} (ID: {target_id}) sends spam to all users who start it.\nIt promotes crypto scams and fake giveaways.\nViolation link: {generate_violation_link(username, target_id)}\nThousands of complaints. Delete this bot.",
-        "bot_prodazha": f"Bot @{username} (ID: {target_id}) sells stolen data and hacked accounts.\nIt offers credit card dumps and access to mailboxes.\nViolation link: {generate_violation_link(username, target_id)}\nThis is illegal. Ban this bot right now."
+        "akc_doks": f"Пользователь @{username} (ID: {target_id}) занимается публикацией персональных данных.\nОн выложил мой домашний адрес и фото паспорта.\nСсылка на нарушение: {link}\nПрошу заблокировать его за нарушение законов о приватности.",
+        "akc_spam": f"Пользователь @{username} (ID: {target_id}) ежедневно рассылает массовый спам.\nОн засорил мой канал рекламой и фишинговыми ссылками.\nСсылка на нарушение: {link}\nЭто нарушение правил Telegram. Пожалуйста, заблокируйте его.",
+        "akc_scam": f"Аккаунт @{username} (ID: {target_id}) является мошенником.\nОн обещал продать мне iPhone, но забрал деньги и исчез.\nСсылка на нарушение: {link}\nУ меня есть скриншоты. Многие люди жалуются на него.",
+        "akc_narko": f"Пользователь @{username} (ID: {target_id}) управляет наркошопом в Telegram.\nОн продает мефедрон и кокаин через личные сообщения.\nСсылка на нарушение: {link}\nЕго канал продвигает запрещенные вещества. Заблокируйте этот аккаунт.",
+        "akc_prodazha": f"Пользователь @{username} (ID: {target_id}) продает украденные аккаунты Telegram и взломанные данные.\nОн предлагает украденные кредитные карты и логины PayPal.\nСсылка на нарушение: {link}\nЭто явное нарушение правил Telegram. Пожалуйста, приостановите его аккаунт.",
+        "tgk_doks": f"Канал @{username} (ID: {target_id}) публикует личные данные людей.\nОни выложили мое полное имя, адрес и место работы без согласия.\nСсылка на нарушение: {link}\nЭто доксинг и harassment. Закройте этот канал.",
+        "tgk_narko": f"Канал @{username} (ID: {target_id}) является нарко-маркетплейсом.\nУ них есть ссылки на даркнет-магазины и контакты для покупки наркотиков.\nСсылка на нарушение: {link}\nНарушение правил Telegram и федерального закона. Пожалуйста, удалите.",
+        "tgk_prodazha": f"Канал @{username} (ID: {target_id}) продает нелегальные товары.\nОни предлагают фальшивые паспорта, водительские права и дипломы вузов.\nСсылка на нарушение: {link}\nЭто мошенничество. Заблокируйте этот канал немедленно.",
+        "grp_doks": f"Группа @{username} (ID: {target_id}) публикует личные данные людей.\nУчастники выложили мой адрес, телефон и фото паспорта.\nСсылка на нарушение: {link}\nЭто доксинг. Закройте эту группу.",
+        "grp_narko": f"Группа @{username} (ID: {target_id}) занимается распространением наркотиков.\nВ чате продают мефедрон, кокаин и марихуану.\nСсылка на нарушение: {link}\nНарушение правил Telegram. Удалите эту группу.",
+        "grp_prodazha": f"Группа @{username} (ID: {target_id}) продает краденые аккаунты и базы данных.\nПредлагают доступ к слитым базам и взломанным почтам.\nСсылка на нарушение: {link}\nЗаблокируйте эту группу.",
+        "bot_narko": f"Бот @{username} (ID: {target_id}) продает наркотики через автоответчик.\nЛюбой может заказать кокаин, LSD или марихуану через этого бота.\nЭто явное нарушение. Пожалуйста, заблокируйте этого бота.",
+        "bot_glaz": f"Бот @{username} (ID: {target_id}) является доксинг-инструментом Глаз Бога.\nОн сливает персональные данные: паспорт, номер авто, телефон, адрес.\nСсылка на нарушение: {link}\nЭтот бот нарушает законы о приватности. Удалите его из Telegram.",
+        "bot_spam": f"Бот @{username} (ID: {target_id}) рассылает спам всем пользователям, которые его запускают.\nОн продвигает крипто-схемы и фейковые розыгрыши.\nСсылка на нарушение: {link}\nТысячи жалоб. Удалите этого бота.",
+        "bot_prodazha": f"Бот @{username} (ID: {target_id}) продает украденные данные и взломанные аккаунты.\nОн предлагает дампы кредитных карт и доступ к почтовым ящикам.\nСсылка на нарушение: {link}\nЭто незаконно. Заблокируйте этого бота немедленно."
     }
     return templates.get(template_type, templates["akc_spam"])
 
-BROWSERS = ["chrome_124", "chrome_123", "chrome_120", "firefox_120", "firefox_115", "edge_122", "safari_17_0", "ios_17_0"]
+def get_current_time_with_tz(timezone_str):
+    try:
+        tz = pytz.timezone(timezone_str)
+        now = datetime.now(tz)
+        return now.strftime('%a, %d %b %Y %H:%M:%S %Z')
+    except:
+        return datetime.now().strftime('%a, %d %b %Y %H:%M:%S MSK')
 
 def generate_device():
     browser = random.choice(BROWSERS)
     device_id = hashlib.md5(f"{random.randint(1,9999999)}{time.time()}".encode()).hexdigest()[:16]
-    return browser, device_id
+    browser_data = USER_AGENTS[browser]
+    return browser, device_id, browser_data
 
 def send_complaint(username, target_id, template_type, name, email, phone):
     msg = get_complaint_text(username, target_id, template_type)
-    browser, device_id = generate_device()
+    browser, device_id, browser_data = generate_device()
     session = Session(client_identifier=browser, random_tls_extension_order=True)
+    current_time = get_current_time_with_tz(browser_data["timezone"])
     headers = {
-        'User-Agent': f'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Content-Type': 'application/x-www-form-urlencoded'
+        'User-Agent': browser_data["ua"],
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Date': current_time,
+        'Cache-Control': 'max-age=0',
+        'Upgrade-Insecure-Requests': '1'
     }
+    if browser_data["platform"] == "Windows":
+        headers['Sec-Ch-Ua-Platform'] = '"Windows"'
+        headers['Sec-Ch-Ua-Mobile'] = '?0'
+    elif browser_data["platform"] == "MacOS":
+        headers['Sec-Ch-Ua-Platform'] = '"macOS"'
+        headers['Sec-Ch-Ua-Mobile'] = '?0'
+    elif browser_data["platform"] == "iOS":
+        headers['Sec-Ch-Ua-Platform'] = '"iOS"'
+        headers['Sec-Ch-Ua-Mobile'] = '?1'
+    if 'chrome' in browser or 'edge' in browser:
+        chrome_version = browser.split('_')[1] if '_' in browser else '124'
+        headers['Sec-Ch-Ua'] = f'"Not/A)Brand";v="99", "Google Chrome";v="{chrome_version}", "Chromium";v="{chrome_version}"'
+        headers['Sec-Fetch-Dest'] = 'document'
+        headers['Sec-Fetch-Mode'] = 'navigate'
+        headers['Sec-Fetch-Site'] = 'none'
+        headers['Sec-Fetch-User'] = '?1'
+    elif 'firefox' in browser:
+        headers['Upgrade-Insecure-Requests'] = '1'
     payload = {'text': msg, 'name': name, 'email': email, 'phone': phone, 'setl': 'en'}
     try:
         r = session.post('https://telegram.org/support', data=payload, headers=headers, timeout_seconds=10)
@@ -145,7 +192,9 @@ def mass_report(username, target_id, template_type, count=250):
         if send_complaint(username, target_id, template_type, name, email, phone):
             success += 1
         print(f"[{i+1}/{count}] Успешно: {success}", end='\r')
-        time.sleep(random.uniform(3, 7))
+        delay = random.gauss(5, 1.5)
+        delay = max(2, min(10, delay))
+        time.sleep(delay)
     print(f"\n{Fore.CYAN}Готово! Отправлено {success} из {count} жалоб.")
     input("Нажмите Enter...")
 
@@ -158,8 +207,9 @@ def main():
         print(f"{Fore.GREEN}Бесплатный сносера - https://t.me/+O1F14zN8HPM0N2Fh")
         print("1. снос акк")
         print("2. снос тгк")
-        print("3. снос ботов")
-        print("4. сьебатся нахуй")
+        print("3. снос групп")
+        print("4. снос ботов")
+        print("5. сьебатся нахуй")
         choice = input("> ")
         if choice == "1":
             username = input("Укажите @username цели: ").strip()
@@ -180,15 +230,24 @@ def main():
             template_type = type_map.get(choice2, "tgk_doks")
             mass_report(username, target_id, template_type, 250)
         elif choice == "3":
+            username = input("Укажите @username группы: ").strip()
+            target_id = input("Укажите ID группы: ").strip()
+            clear()
+            print("1. Докс\n2. Наркошоп\n3. Продажа")
+            choice2 = input("Выберите тему (1-3): ")
+            type_map = {"1":"grp_doks","2":"grp_narko","3":"grp_prodazha"}
+            template_type = type_map.get(choice2, "grp_doks")
+            mass_report(username, target_id, template_type, 250)
+        elif choice == "4":
             username = input("Укажите @username бота: ").strip()
             target_id = input("Укажите ID бота: ").strip()
             clear()
-            print("1. Наркошоп (без ссылки)\n2. Глаз Бога (докс-бот)\n3. Спам\n4. Продажа краденого")
+            print("1. Наркошоп\n2. Глаз Бога (докс-бот)\n3. Спам\n4. Продажа краденого")
             choice2 = input("Выберите тему (1-4): ")
             type_map = {"1":"bot_narko","2":"bot_glaz","3":"bot_spam","4":"bot_prodazha"}
             template_type = type_map.get(choice2, "bot_spam")
             mass_report(username, target_id, template_type, 250)
-        elif choice == "4":
+        elif choice == "5":
             print("Сьебывай.")
             break
 
